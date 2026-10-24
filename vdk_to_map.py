@@ -39,9 +39,9 @@ def create(vdk_path : str):
     assert vdk_path.lower().endswith(".vdk"), "File doesn't end in .vdk"
 
     f_in = open(vdk_path, "rb")
-    vdk_name = os.path.basename(vdk_path)
+    vdk_name = os.path.basename(vdk_path).upper()
     vdk_name_without_extension = os.path.splitext(vdk_name)[0]
-    f_out = open(os.path.dirname(vdk_path) + "/" + vdk_name_without_extension + ".MAP", "wb")
+    f_out = open(os.path.join(os.path.dirname(vdk_path), vdk_name_without_extension + ".MAP"), "wb")
 
     _,_,file_count, dir_count, size, f_list = _get_vdk_header(f_in)
 
@@ -51,7 +51,7 @@ def create(vdk_path : str):
             file_header_offset_in_archive = f.tell()
 
             is_dir, name, real_size, compressed_size, doffset, next_offset = struct.unpack("<?128sIIII", f.read(145))
-            name : str = name.decode("cp949").rstrip("\0")
+            name : str = name.split(b"\0")[0].decode("ascii")
             print(is_dir, path, name, real_size, compressed_size, doffset, next_offset)
             if is_dir:
                 if name not in (".", ".."):
@@ -103,6 +103,12 @@ def _get_vdk_header(f_in):
     return versionString, unknownInt, fileCount, dirCount, size, fList
 
 def write_entry(f, file_path:str, archive_name:str, uncompressed_size:int, compressed_size:int, offset:int):
+
+    if len(file_path.encode("ascii")) > FILE_NAME_SIZE - 1:
+        raise ValueError("path longer than %d characters: %s" % (FILE_NAME_SIZE - 1, file_path))
+    if len(archive_name.encode("ascii")) > ARCHIVE_NAME_SIZE - 2:
+        raise ValueError("archive name longer than %d characters" % (ARCHIVE_NAME_SIZE - 2))
+
     #strings start with a null byte for some reason
     file_path = ("\x00"+file_path).encode("ascii")
     archive_name = ("\x00"+archive_name).encode("ascii")

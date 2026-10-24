@@ -69,13 +69,16 @@ class Entry:
                 e = Entry(True, s, 0, 0, b"", self)
                 #e.print()
                 e.do_dir(new_real_path, new_fake_path)
-            else:
+            elif os.path.getsize(my_real_path) > 0: #skip empty files
                 e = Entry(False, s, 0, 0, b"", self)
                 #e.print()
 
         return
 
     def write(self, f):
+        if len(self.name.encode("ascii")) > 127:
+            raise ValueError("name longer than 127 characters: " + self.name)
+
         f.write(struct.pack("<?128sIIII",
                             self.isDir,
                             self.name.encode("ascii"),
@@ -110,7 +113,7 @@ def build_tree(folder_path:str):
             e = Entry(True, s, 0, 0, b"", root_entry)
             #e.print()
             e.do_dir(folder_path, archive_path)
-        else:
+        elif os.path.getsize(my_real_path) > 0: #skip empty files
             e = Entry(False, s, 0, 0, b"", root_entry)
             #e.print()
 
@@ -229,7 +232,8 @@ def run(folder_path:str):
     #print(G_file_count, G_dir_count, filesize)
     print_everything(root_entry)
 
-    d = os.path.dirname(folder_path)
+    #d = os.path.dirname(folder_path)
+    d = os.path.normpath(os.path.abspath(folder_path))
     #print("Writing")
     save_tree(d+".VDK", root_entry, filesize)
 
